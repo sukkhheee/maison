@@ -19,6 +19,10 @@ const bookingStatusStyles: Record<AdminBookingStatus, { cls: string; label: stri
   CANCELLED: {
     cls: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20",
     label: "Цуцлагдсан"
+  },
+  NO_SHOW: {
+    cls: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20",
+    label: "Ирээгүй"
   }
 };
 
