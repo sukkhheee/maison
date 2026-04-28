@@ -10,12 +10,19 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
 /**
  * Issues and parses HS256-signed JWTs used for stateless admin / staff auth.
+ *
+ * <p>The HMAC key is always derived from the configured secret via SHA-256,
+ * which guarantees a fixed 256-bit key length regardless of how long the input
+ * is — short secrets won't crash startup, but a warning is logged because the
+ * cryptographic strength of the JWT still depends on the input's entropy.
  *
  * <p>Claims layout:
  * <pre>
@@ -29,6 +36,9 @@ import java.util.Date;
 @Service
 public class JwtService {
 
+    /** Bytes; HS256 requires ≥ 32. SHA-256 always produces exactly 32. */
+    private static final int RECOMMENDED_MIN_BYTES = 32;
+
     private final SecretKey key;
     private final Duration ttl;
 
@@ -36,12 +46,25 @@ public class JwtService {
         @Value("${app.security.jwt.secret}") String secret,
         @Value("${app.security.jwt.access-token-ttl-minutes:1440}") long ttlMinutes
     ) {
-        if (secret.length() < 32) {
-            // HS256 requires a 256-bit key. Anything shorter would silently fail in jjwt.
+        if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
-                "app.security.jwt.secret must be at least 32 characters; got " + secret.length());
+                "app.security.jwt.secret must be set (env var JWT_SECRET). " +
+                "Generate one with: openssl rand -base64 48");
         }
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < RECOMMENDED_MIN_BYTES) {
+            log.warn("JWT_SECRET is shorter than recommended ({} bytes; need {}+). " +
+                "Tokens will still sign correctly because the key is derived via SHA-256, " +
+                "but the cryptographic strength is bounded by your secret's entropy. " +
+                "Rotate to a longer secret in production.",
+                secretBytes.length, RECOMMENDED_MIN_BYTES);
+        }
+
+        // SHA-256 → exactly 32 bytes → meets jjwt's HS256 minimum without
+        // crashing the app on shorter inputs.
+        byte[] keyBytes = sha256(secretBytes);
+        this.key = Keys.hmacShaKeyFor(keyBytes);
         this.ttl = Duration.ofMinutes(ttlMinutes);
     }
 
@@ -72,5 +95,14 @@ public class JwtService {
             .build()
             .parseSignedClaims(token)
             .getPayload();
+    }
+
+    private static byte[] sha256(byte[] input) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(input);
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is mandated by every JRE; this branch is unreachable.
+            throw new IllegalStateException("SHA-256 not available in this JRE", e);
+        }
     }
 }
