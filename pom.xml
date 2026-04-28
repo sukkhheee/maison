@@ -55,11 +55,14 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
-        <!-- Rate limiting on auth endpoints -->
+        <!-- Rate limiting on auth endpoints. 8.7.0 is the last release under
+             the simple "bucket4j-core" artifact name; 8.10+ split into per-JDK
+             artifacts (bucket4j_jdk17-core etc.) and 8.10.1 specifically wasn't
+             published with the multi-release variants. -->
         <dependency>
             <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j_jdk17-core</artifactId>
-            <version>8.10.1</version>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.7.0</version>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
