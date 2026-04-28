@@ -1,0 +1,30 @@
+# Build output
+target/
+*.log
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# Frontends are deployed to Vercel — not needed inside the backend image.
+frontend/
+frontend-admin/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# Git metadata (Docker build context doesn't need it)
+.git/
+.gitignore
+.gitattributes
+
+# Documentation / repo housekeeping
+*.md
+docs/
+
+# OS junk
+.DS_Store
+Thumbs.db
