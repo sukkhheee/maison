@@ -76,7 +76,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         long waitSeconds = Math.max(1, probe.getNanosToWaitForRefill() / 1_000_000_000L);
         log.warn("Rate limit hit on {} for ip={} retryAfterSec={}", path, clientIp(request), waitSeconds);
-        response.setStatus(HttpServletResponse.SC_TOO_MANY_REQUESTS);
+        // Jakarta's HttpServletResponse doesn't ship a 429 constant — use the literal.
+        response.setStatus(429);
         response.setHeader("Retry-After", String.valueOf(waitSeconds));
         response.setHeader("X-RateLimit-Remaining", "0");
         response.setContentType("application/json");
