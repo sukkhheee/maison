@@ -29,7 +29,8 @@ spring:
       ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Hibernate 6+ auto-detects PostgreSQLDialect from the JDBC URL.
+        # Setting it explicitly triggers HHH90000025 — leave it commented out.
         format_sql: true
         jdbc:
           time_zone: Asia/Ulaanbaatar

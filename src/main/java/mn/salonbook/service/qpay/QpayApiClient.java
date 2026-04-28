@@ -48,10 +48,7 @@ public class QpayApiClient {
 
     public QpayApiClient(QpayProperties props, RestTemplateBuilder builder) {
         this.props = props;
-        this.restTemplate = builder
-            .setConnectTimeout(Duration.ofSeconds(5))
-            .setReadTimeout(Duration.ofSeconds(15))
-            .build();
+        this.restTemplate = builder.setConnectTimeout(Duration.ofSeconds(5)).setReadTimeout(Duration.ofSeconds(15)).build();
     }
 
     /* ====================================================================== */
@@ -64,15 +61,9 @@ public class QpayApiClient {
         }
         try {
             HttpHeaders headers = bearer();
-            return restTemplate.exchange(
-                props.getBaseUrl() + "/invoice",
-                HttpMethod.POST,
-                new HttpEntity<>(request, headers),
-                InvoiceCreateResponse.class
-            ).getBody();
+            return restTemplate.exchange(props.getBaseUrl() + "/invoice", HttpMethod.POST, new HttpEntity<>(request, headers), InvoiceCreateResponse.class).getBody();
         } catch (HttpStatusCodeException e) {
-            log.error("QPay /invoice failed: status={} body={}",
-                e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("QPay /invoice failed: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new QpayException("QPay invoice creation failed", e);
         }
     }
@@ -83,19 +74,10 @@ public class QpayApiClient {
         }
         try {
             HttpHeaders headers = bearer();
-            PaymentCheckRequest body = new PaymentCheckRequest(
-                "INVOICE", invoiceId,
-                new PaymentCheckRequest.Offset(1, 100)
-            );
-            return restTemplate.exchange(
-                props.getBaseUrl() + "/payment/check",
-                HttpMethod.POST,
-                new HttpEntity<>(body, headers),
-                PaymentCheckResponse.class
-            ).getBody();
+            PaymentCheckRequest body = new PaymentCheckRequest("INVOICE", invoiceId, new PaymentCheckRequest.Offset(1, 100));
+            return restTemplate.exchange(props.getBaseUrl() + "/payment/check", HttpMethod.POST, new HttpEntity<>(body, headers), PaymentCheckResponse.class).getBody();
         } catch (HttpStatusCodeException e) {
-            log.error("QPay /payment/check failed: status={} body={}",
-                e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("QPay /payment/check failed: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new QpayException("QPay payment check failed", e);
         }
     }
@@ -112,8 +94,7 @@ public class QpayApiClient {
     }
 
     private synchronized String getAccessToken() {
-        if (cachedAccessToken != null
-            && Instant.now().isBefore(cachedAccessTokenExpiresAt.minusSeconds(30))) {
+        if (cachedAccessToken != null && Instant.now().isBefore(cachedAccessTokenExpiresAt.minusSeconds(30))) {
             return cachedAccessToken;
         }
         TokenResponse token = fetchToken();
@@ -125,21 +106,14 @@ public class QpayApiClient {
     }
 
     private TokenResponse fetchToken() {
-        String basic = Base64.getEncoder().encodeToString(
-            (props.getUsername() + ":" + props.getPassword()).getBytes(StandardCharsets.UTF_8));
+        String basic = Base64.getEncoder().encodeToString((props.getUsername() + ":" + props.getPassword()).getBytes(StandardCharsets.UTF_8));
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Basic " + basic);
         headers.setContentType(MediaType.APPLICATION_JSON);
         try {
-            return restTemplate.exchange(
-                props.getBaseUrl() + "/auth/token",
-                HttpMethod.POST,
-                new HttpEntity<>(null, headers),
-                TokenResponse.class
-            ).getBody();
+            return restTemplate.exchange(props.getBaseUrl() + "/auth/token", HttpMethod.POST, new HttpEntity<>(null, headers), TokenResponse.class).getBody();
         } catch (HttpStatusCodeException e) {
-            log.error("QPay /auth/token failed: status={} body={}",
-                e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("QPay /auth/token failed: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new QpayException("QPay auth failed", e);
         }
     }
@@ -152,8 +126,7 @@ public class QpayApiClient {
      * In-memory store of mock invoices so {@link #checkPayment} can simulate
      * "payment received after N seconds".
      */
-    private final java.util.concurrent.ConcurrentHashMap<String, Instant> mockInvoiceCreatedAt =
-        new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, Instant> mockInvoiceCreatedAt = new java.util.concurrent.ConcurrentHashMap<>();
 
     private InvoiceCreateResponse mockInvoice(InvoiceCreateRequest req) {
         String id = "mock-" + UUID.randomUUID();
@@ -163,31 +136,15 @@ public class QpayApiClient {
         // qpay://q?<base64-payload> back from QPay; the format here is just for
         // visual fidelity in dev.
         String qrText = "qpay://mock?invoice=" + id + "&amount=" + req.amount();
-        return new InvoiceCreateResponse(
-            id,
-            qrText,
-            null,                        // no qr_image in mock
-            "https://qpay.mn/short/" + id,
-            java.util.List.of(
-                new QpayDtos.BankUrl("Khan Bank", "Хаан Банк", null, qrText),
-                new QpayDtos.BankUrl("State Bank", "Төрийн Банк", null, qrText),
-                new QpayDtos.BankUrl("Golomt", "Голомт Банк", null, qrText),
-                new QpayDtos.BankUrl("MonPay", "MonPay", null, qrText),
-                new QpayDtos.BankUrl("SocialPay", "SocialPay", null, qrText)
-            )
-        );
+        return new InvoiceCreateResponse(id, qrText, null,                        // no qr_image in mock
+                "https://qpay.mn/short/" + id, java.util.List.of(new QpayDtos.BankUrl("Khan Bank", "Хаан Банк", null, qrText), new QpayDtos.BankUrl("State Bank", "Төрийн Банк", null, qrText), new QpayDtos.BankUrl("Golomt", "Голомт Банк", null, qrText), new QpayDtos.BankUrl("MonPay", "MonPay", null, qrText), new QpayDtos.BankUrl("SocialPay", "SocialPay", null, qrText)));
     }
 
     private PaymentCheckResponse mockPaymentCheck(String invoiceId) {
         Instant created = mockInvoiceCreatedAt.get(invoiceId);
         boolean paid = created != null && Instant.now().isAfter(created.plusSeconds(10));
         if (paid) {
-            QpayDtos.Payment p = new QpayDtos.Payment(
-                "pay-" + invoiceId,
-                "PAID",
-                java.math.BigDecimal.ZERO,
-                Instant.now().toString()
-            );
+            QpayDtos.Payment p = new QpayDtos.Payment("pay-" + invoiceId, "PAID", java.math.BigDecimal.ZERO, Instant.now().toString());
             return new PaymentCheckResponse(1, java.math.BigDecimal.ZERO, java.util.List.of(p));
         }
         return new PaymentCheckResponse(0, java.math.BigDecimal.ZERO, java.util.List.of());
