@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Sunrise, Moon, AlertCircle } from "lucide-react";
+import { Sun, Sunrise, Moon, AlertCircle, type LucideIcon } from "lucide-react";
 import { getSlotGroupsFor, type Period } from "@/lib/data/slots";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
@@ -15,7 +15,7 @@ interface Props {
   onSelectTime: (time: string) => void;
 }
 
-const periodIcons: Record<Period, React.ComponentType<{ size?: number; className?: string }>> = {
+const periodIcons: Record<Period, LucideIcon> = {
   morning: Sunrise,
   afternoon: Sun,
   evening: Moon

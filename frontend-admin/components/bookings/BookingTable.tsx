@@ -11,7 +11,8 @@ import {
   Phone,
   ChevronLeft,
   ChevronRight,
-  Download
+  Download,
+  type LucideIcon
 } from "lucide-react";
 import {
   type AdminBooking,
@@ -389,7 +390,7 @@ function MenuItem({
   danger,
   onClick
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   label: string;
   danger?: boolean;
   onClick: () => void;

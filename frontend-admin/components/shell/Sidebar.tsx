@@ -11,7 +11,8 @@ import {
   Settings,
   LogOut,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  type LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -19,7 +20,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   badge?: string;
 }
 
