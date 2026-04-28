@@ -5,9 +5,13 @@ spring:
     serialization:
       write-dates-as-timestamps: false
   datasource:
-    # Railway / Render auto-inject PGHOST / PGPORT / PGDATABASE / PGUSER / PGPASSWORD
-    # when you attach a managed Postgres add-on; locally we fall back to 127.0.0.1.
-    url: jdbc:postgresql://${PGHOST:${DB_HOST:localhost}}:${PGPORT:${DB_PORT:5432}}/${PGDATABASE:${DB_NAME:salonbook}}
+    # Railway / Render / Neon all expose PGHOST / PGPORT / PGDATABASE / PGUSER /
+    # PGPASSWORD; locally we fall back to 127.0.0.1.
+    #
+    # sslmode=prefer is the smart default: managed Postgres (Neon, RDS, Supabase)
+    # has TLS available so we use it automatically; bare-metal local Postgres
+    # without TLS still connects (driver falls back to plaintext).
+    url: jdbc:postgresql://${PGHOST:${DB_HOST:localhost}}:${PGPORT:${DB_PORT:5432}}/${PGDATABASE:${DB_NAME:salonbook}}?sslmode=${DB_SSLMODE:prefer}
     username: ${PGUSER:${DB_USER:postgres}}
     password: ${PGPASSWORD:${DB_PASSWORD:postgres}}
     driver-class-name: org.postgresql.Driver
