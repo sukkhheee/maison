@@ -44,12 +44,15 @@ export async function api<T>(
   const body = text ? safeJson(text) : null;
 
   if (!res.ok) {
-    const code =
-      (body && (body as { code?: string }).code) ?? `HTTP_${res.status}`;
-    const message =
-      (body && (body as { message?: string }).message) ?? res.statusText;
-    const details = (body && (body as { details?: Record<string, unknown> }).details);
-    throw new ApiError(res.status, code, message, details);
+    // Narrow once so TS infers concrete types instead of `unknown` after &&.
+    const err = (body ?? {}) as {
+      code?: string;
+      message?: string;
+      details?: Record<string, unknown>;
+    };
+    const code = err.code ?? `HTTP_${res.status}`;
+    const message = err.message ?? res.statusText;
+    throw new ApiError(res.status, code, message, err.details);
   }
 
   return body as T;
