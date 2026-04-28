@@ -234,7 +234,14 @@ export function ServiceSelection({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ duration: 0.4, ease }}
-              className="fixed left-1/2 bottom-6 -translate-x-1/2 z-40 w-[min(96%,720px)]"
+              // Bottom offset honors the mobile browser chrome (URL bar /
+              // gestures bar) via env(safe-area-inset-bottom). Without this,
+              // the CTA hides behind Chrome iOS / Android navigation UI.
+              // z-50 outranks the also-fixed Navbar so they never collide.
+              style={{
+                bottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 0.75rem))"
+              }}
+              className="fixed left-1/2 -translate-x-1/2 z-50 w-[min(96%,720px)]"
             >
               <div className="glass-light rounded-2xl shadow-soft p-3 sm:p-4 flex items-center gap-3 sm:gap-5">
                 <div className="hidden sm:grid h-12 w-12 rounded-full bg-gold-gradient place-items-center text-ink shrink-0">
@@ -269,7 +276,12 @@ export function ServiceSelection({
   if (isEmbedded) return <div className="space-y-2">{inner}</div>;
 
   return (
-    <section id="services" className="relative bg-bone py-24 sm:py-32">
+    // Extra bottom padding so the floating CTA never overlaps the last card.
+    // ~6.5rem ≈ CTA height (~64px) + bottom gap.
+    <section
+      id="services"
+      className="relative bg-bone pt-24 sm:pt-32 pb-32 sm:pb-40"
+    >
       {/* Decorative blob */}
       <div
         aria-hidden
