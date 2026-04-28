@@ -5,8 +5,9 @@ import { motion } from "framer-motion";
 import { MasterSelector } from "./MasterSelector";
 import { DateStrip } from "./DateStrip";
 import { TimeSlots } from "./TimeSlots";
-import { masters, type Master } from "@/lib/data/masters";
+import { type Master } from "@/lib/data/masters";
 import type { ServiceItem } from "@/lib/data/services";
+import { fetchMasters } from "@/lib/api/catalog";
 import { cn, formatDuration, formatMnt } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
@@ -36,21 +37,44 @@ export function BookingCalendar({
   );
   const totalPrice = selectedServices.reduce((a, s) => a + s.price, 0);
 
-  const [activeMaster, setActiveMaster] = useState<Master>(master ?? masters[0]);
+  const [masters, setMasters] = useState<Master[]>([]);
+  const [activeMaster, setActiveMaster] = useState<Master | null>(master);
   const [activeDate, setActiveDate] = useState<Date>(date);
 
-  // Reset selected time whenever master or date changes
+  // Fetch the salon's masters on mount.
   useEffect(() => {
+    let cancelled = false;
+    fetchMasters()
+      .then((items) => {
+        if (cancelled) return;
+        setMasters(items);
+        if (!activeMaster && items.length > 0) {
+          setActiveMaster(items[0]);
+        }
+      })
+      .catch(() => {
+        // Silent on error — empty grid + the time selector will be inert.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reset selected time whenever master or date changes.
+  useEffect(() => {
+    if (!activeMaster) return;
     if (master?.id !== activeMaster.id || +activeDate !== +date) {
       onChange({ master: activeMaster, date: activeDate, time: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMaster.id, activeDate]);
+  }, [activeMaster?.id, activeDate]);
 
   return (
     <div className="space-y-12">
       <MasterSelector
-        selectedId={activeMaster.id}
+        masters={masters}
+        selectedId={activeMaster?.id}
         onSelect={(m) => setActiveMaster(m)}
       />
 
@@ -70,8 +94,8 @@ export function BookingCalendar({
             <p className="text-xs uppercase tracking-luxury-wide text-ink/40">
               Сонгосон мастер
             </p>
-            <p className="mt-2 font-serif text-xl">{activeMaster.name}</p>
-            <p className="text-sm text-ink/55">{activeMaster.title}</p>
+            <p className="mt-2 font-serif text-xl">{activeMaster?.name ?? "—"}</p>
+            <p className="text-sm text-ink/55">{activeMaster?.title ?? ""}</p>
           </div>
         </motion.div>
 
@@ -83,13 +107,14 @@ export function BookingCalendar({
           className="min-w-0 bg-white rounded-2xl p-6 sm:p-8 border border-ink/8 shadow-soft"
         >
           <TimeSlots
-            masterId={activeMaster.id}
+            masterId={activeMaster?.id ?? ""}
             date={activeDate}
             durationMinutes={totalMinutes}
             selectedTime={time}
-            onSelectTime={(t) =>
-              onChange({ master: activeMaster, date: activeDate, time: t })
-            }
+            onSelectTime={(t) => {
+              if (!activeMaster) return;
+              onChange({ master: activeMaster, date: activeDate, time: t });
+            }}
           />
         </motion.div>
       </div>

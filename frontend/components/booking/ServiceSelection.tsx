@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Clock, Sparkles } from "lucide-react";
+import { Check, Clock, Loader2, Sparkles } from "lucide-react";
 import {
   categories,
-  services,
   type ServiceCategory,
   type ServiceItem
 } from "@/lib/data/services";
+import { fetchServices } from "@/lib/api/catalog";
 import { cn, formatDuration, formatMnt } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -39,15 +39,40 @@ export function ServiceSelection({
 }: Props) {
   const [active, setActive] = useState<ServiceCategory | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected));
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch the salon's catalog from the backend on mount.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchServices()
+      .then((items) => {
+        if (cancelled) return;
+        setServices(items);
+        setError(null);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e?.message ?? "Үйлчилгээний жагсаалтыг ачаалж чадсангүй.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = useMemo(
     () => (active === "all" ? services : services.filter((s) => s.category === active)),
-    [active]
+    [active, services]
   );
 
   const selectedItems = useMemo(
     () => services.filter((s) => selected.has(s.id)),
-    [selected]
+    [selected, services]
   );
 
   const totals = useMemo(() => {
@@ -108,33 +133,53 @@ export function ServiceSelection({
         ))}
       </div>
 
-      {/* Cards grid */}
-      <motion.ul
-        layout
-        className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        <AnimatePresence mode="popLayout">
-          {filtered.map((service, i) => {
-            const isSelected = selected.has(service.id);
-            return (
-              <motion.li
-                key={service.id}
-                layout
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.5, ease, delay: i * 0.04 }}
-              >
-                <ServiceCard
-                  service={service}
-                  selected={isSelected}
-                  onToggle={() => toggle(service.id)}
-                />
-              </motion.li>
-            );
-          })}
-        </AnimatePresence>
-      </motion.ul>
+      {/* Cards grid (or loading / empty / error states) */}
+      {loading ? (
+        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-white border border-ink/8 h-72 animate-pulse"
+            />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center text-rose-700 inline-flex items-center gap-2 justify-center">
+          <Loader2 size={16} />
+          {error}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-12 text-center text-ink/55">
+          Үйлчилгээ хараахан бүртгэгдээгүй байна.
+        </div>
+      ) : (
+        <motion.ul
+          layout
+          className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          <AnimatePresence mode="popLayout">
+            {filtered.map((service, i) => {
+              const isSelected = selected.has(service.id);
+              return (
+                <motion.li
+                  key={service.id}
+                  layout
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -16 }}
+                  transition={{ duration: 0.5, ease, delay: i * 0.04 }}
+                >
+                  <ServiceCard
+                    service={service}
+                    selected={isSelected}
+                    onToggle={() => toggle(service.id)}
+                  />
+                </motion.li>
+              );
+            })}
+          </AnimatePresence>
+        </motion.ul>
+      )}
 
       {/* Floating summary bar — only in section mode (wizard supplies its own) */}
       {!isEmbedded && (

@@ -4,15 +4,17 @@ import { useRef } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Sparkles, Star, Check } from "lucide-react";
-import { masters, type Master } from "@/lib/data/masters";
+import { type Master } from "@/lib/data/masters";
 import { cn, formatMnt } from "@/lib/utils";
 
 interface Props {
+  /** Already includes the "any master" sentinel as first entry. */
+  masters: Master[];
   selectedId?: string;
   onSelect: (master: Master) => void;
 }
 
-export function MasterSelector({ selectedId, onSelect }: Props) {
+export function MasterSelector({ masters, selectedId, onSelect }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (dir: "l" | "r") => {

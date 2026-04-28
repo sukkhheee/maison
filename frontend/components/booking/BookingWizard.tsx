@@ -10,7 +10,7 @@ import { BookingCalendar } from "./BookingCalendar";
 import { BookingSummary, type CustomerForm } from "./BookingSummary";
 import { QpayPaymentDialog } from "./QpayPaymentDialog";
 import { Button } from "@/components/ui/button";
-import { masters, type Master } from "@/lib/data/masters";
+import { type Master } from "@/lib/data/masters";
 import type { ServiceItem } from "@/lib/data/services";
 import { formatDuration, formatMnt } from "@/lib/utils";
 import {
@@ -32,7 +32,9 @@ export function BookingWizard() {
   const [step, setStep] = useState(0);
 
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
-  const [master, setMaster] = useState<Master>(masters[0]);
+  // Master is null until BookingCalendar fetches the salon's staff and the
+  // user picks (or auto-selects) one.
+  const [master, setMaster] = useState<Master | null>(null);
   const [date, setDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -62,20 +64,13 @@ export function BookingWizard() {
   const goNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  /**
-   * Resolves the "any master" sentinel to the first real master.
-   * The backend has no notion of auto-pick; we keep that UX sugar in the client.
-   */
-  const resolveStaffExternalId = (m: Master): string =>
-    m.id === "any" ? masters.find((x) => x.id !== "any")!.id : m.id;
-
   const handleConfirm = async () => {
-    if (!time) return;
+    if (!time || !master) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       const res = await createBooking({
-        staffExternalId: resolveStaffExternalId(master),
+        staffExternalId: master.id,
         serviceExternalIds: selectedServices.map((s) => s.id),
         startTime: toLocalDateTimeString(date, time),
         customer: {
@@ -164,7 +159,7 @@ export function BookingWizard() {
               />
             )}
 
-            {step === 2 && time && (
+            {step === 2 && time && master && (
               <BookingSummary
                 services={selectedServices}
                 master={master}
