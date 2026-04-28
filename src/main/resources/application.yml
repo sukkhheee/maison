@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: salonbook-api
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  datasource:
+    # Railway / Render auto-inject PGHOST / PGPORT / PGDATABASE / PGUSER / PGPASSWORD
+    # when you attach a managed Postgres add-on; locally we fall back to 127.0.0.1.
+    url: jdbc:postgresql://${PGHOST:${DB_HOST:localhost}}:${PGPORT:${DB_PORT:5432}}/${PGDATABASE:${DB_NAME:salonbook}}
+    username: ${PGUSER:${DB_USER:postgres}}
+    password: ${PGPASSWORD:${DB_PASSWORD:postgres}}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    # Auto-applied on startup; runs SQL files in db/migration in order.
+    enabled: ${FLYWAY_ENABLED:true}
+    # Adopt an existing dev DB without re-running migrations against tables Flyway didn't create.
+    baseline-on-migrate: true
+    baseline-version: 0
+  jpa:
+    hibernate:
+      # Default "update" keeps the existing dev DB workflow working — JPA can
+      # add columns/tables on the fly. The prod profile (application-prod.yml)
+      # flips this to "validate" so Flyway is the only schema authority.
+      ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Ulaanbaatar
+    show-sql: false
+    open-in-view: false
+
+server:
+  # Railway / Render set $PORT automatically; default 8080 locally.
+  port: ${PORT:8080}
+  forward-headers-strategy: framework  # honor X-Forwarded-* from the platform LB → URLs stay https
+
+app:
+  cors:
+    # Comma-separated list of frontend origins. Override per-env.
+    allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+  security:
+    jwt:
+      # MUST be ≥ 32 chars in production. Generate with `openssl rand -base64 48`.
+      secret: ${JWT_SECRET:change-me-in-prod-use-a-very-long-random-string-at-least-32-bytes}
+      access-token-ttl-minutes: ${JWT_TTL_MINUTES:1440}
+      refresh-token-ttl-days: 14
+  payment:
+    qpay:
+      base-url: ${QPAY_BASE_URL:https://merchant-sandbox.qpay.mn/v2}
+      username: ${QPAY_USERNAME:}
+      password: ${QPAY_PASSWORD:}
+      invoice-code: ${QPAY_INVOICE_CODE:}
+      # Public URL of THIS service that QPay can reach. Use ngrok in dev for real callbacks.
+      public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+
+logging:
+  level:
+    mn.salonbook: ${LOG_LEVEL:INFO}
+    org.hibernate.SQL: WARN

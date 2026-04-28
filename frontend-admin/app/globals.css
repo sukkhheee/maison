@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme — clean editorial enterprise. */
+  :root {
+    --bg: 40 10% 98%;          /* near-white warm */
+    --surface: 0 0% 100%;
+    --surface-2: 40 8% 95%;
+    --border: 40 8% 90%;
+    --ring: 38 38% 60%;
+    --fg: 240 6% 10%;
+    --fg-muted: 240 4% 46%;
+    --accent: 38 38% 60%;       /* gold #C9A96A */
+    --accent-soft: 40 60% 94%;
+    --accent-fg: 240 6% 10%;
+    --success: 152 60% 38%;
+    --warning: 38 92% 50%;
+    --danger: 0 72% 50%;
+    --info: 217 91% 60%;
+    --shadow: 240 6% 10%;
+    color-scheme: light;
+  }
+
+  /* Dark theme — neutral zinc with the same gold accent. */
+  .dark {
+    --bg: 240 6% 6%;
+    --surface: 240 6% 10%;
+    --surface-2: 240 5% 14%;
+    --border: 240 4% 18%;
+    --ring: 38 50% 60%;
+    --fg: 0 0% 98%;
+    --fg-muted: 240 4% 65%;
+    --accent: 38 50% 64%;
+    --accent-soft: 38 30% 18%;
+    --accent-fg: 240 6% 6%;
+    --success: 152 50% 45%;
+    --warning: 38 90% 60%;
+    --danger: 0 70% 60%;
+    --info: 217 91% 65%;
+    --shadow: 0 0% 0%;
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans;
+  }
+
+  ::selection {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-fg));
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--bg)), 0 0 0 4px hsl(var(--ring) / 0.6);
+    border-radius: 6px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--fg-muted) / 0.5);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-lg shadow-soft;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           text-[10px] uppercase tracking-wider font-medium;
+  }
+
+  /* Calendar grid spacing — single source of truth. */
+  .calendar-grid {
+    --slot-h: 56px;
+    --time-w: 80px;
+  }
+}
