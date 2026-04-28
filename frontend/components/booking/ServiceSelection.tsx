@@ -10,8 +10,16 @@ import {
   type ServiceItem
 } from "@/lib/data/services";
 import { fetchServices } from "@/lib/api/catalog";
+import { useRouter } from "@/i18n/navigation";
 import { cn, formatDuration, formatMnt } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+
+/**
+ * Key for the sessionStorage handoff used when the user starts on the salon
+ * landing page (section variant) and clicks Continue. The booking wizard reads
+ * this on mount so the user doesn't have to re-pick the same services.
+ */
+const PENDING_KEY = "salonbook.pending-services";
 
 const ease = [0.22, 1, 0.36, 1];
 
@@ -40,11 +48,35 @@ export function ServiceSelection({
   onContinue,
   variant = "section"
 }: Props) {
+  const router = useRouter();
   const [active, setActive] = useState<ServiceCategory | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected));
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Default click behavior for the section-mode CTA: stash the selected ids
+   * in sessionStorage and navigate into this salon's booking wizard. The
+   * wizard reads PENDING_KEY on mount so the customer doesn't lose their
+   * selection when crossing the page boundary.
+   *
+   * Wizard usage (variant="embedded") provides its own onContinue and bypasses
+   * this default.
+   */
+  const handleContinue = (items: ServiceItem[]) => {
+    if (onContinue) {
+      onContinue(items);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(
+        PENDING_KEY,
+        JSON.stringify(items.map((s) => s.id))
+      );
+    }
+    router.push(`/${salonSlug}/book`);
+  };
 
   // Fetch this salon's catalog from the backend whenever the slug changes.
   useEffect(() => {
@@ -55,6 +87,14 @@ export function ServiceSelection({
         if (cancelled) return;
         setServices(items);
         setError(null);
+        // Hydrate the parent state with any services that were pre-selected
+        // (e.g. carried over from the landing page via sessionStorage). The
+        // parent's selectedServices stays empty otherwise, even though our
+        // local `selected` Set marks them as checked.
+        if (initialSelected.length > 0 && onChange) {
+          const preselected = items.filter((s) => initialSelected.includes(s.id));
+          if (preselected.length > 0) onChange(preselected);
+        }
       })
       .catch((e) => {
         if (cancelled) return;
@@ -66,6 +106,7 @@ export function ServiceSelection({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salonSlug]);
 
   const filtered = useMemo(
@@ -213,7 +254,7 @@ export function ServiceSelection({
                 <Button
                   variant="gold"
                   size="md"
-                  onClick={() => onContinue?.(selectedItems)}
+                  onClick={() => handleContinue(selectedItems)}
                 >
                   Үргэлжлүүлэх
                 </Button>

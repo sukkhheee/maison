@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, PartyPopper, Sparkles } from "lucide-react";
@@ -33,10 +33,35 @@ interface Props {
   salonSlug: string;
 }
 
+/** sessionStorage key the salon landing page uses to hand off selected services. */
+const PENDING_KEY = "salonbook.pending-services";
+
 export function BookingWizard({ salonSlug }: Props) {
   const [step, setStep] = useState(0);
 
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
+  /**
+   * Service ids handed over from the landing page via sessionStorage. Read
+   * once on mount, then cleared so a refresh of /book starts blank. The
+   * embedded ServiceSelection picks these up via its `initialSelected` prop
+   * and fires onChange after fetching the catalog, which populates
+   * `selectedServices` with full ServiceItem objects.
+   */
+  const [pendingServiceIds, setPendingServiceIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(PENDING_KEY);
+    if (!raw) return;
+    try {
+      const ids = JSON.parse(raw) as string[];
+      if (Array.isArray(ids) && ids.length > 0) {
+        setPendingServiceIds(ids);
+      }
+    } catch {
+      /* ignore malformed value */
+    }
+    window.sessionStorage.removeItem(PENDING_KEY);
+  }, []);
   // Master is null until BookingCalendar fetches the salon's staff and the
   // user picks (or auto-selects) one.
   const [master, setMaster] = useState<Master | null>(null);
@@ -141,7 +166,14 @@ export function BookingWizard({ salonSlug }: Props) {
             {step === 0 && (
               <ServiceStep
                 salonSlug={salonSlug}
-                initialSelected={selectedServices.map((s) => s.id)}
+                // Prefer ids carried over from the landing page if the wizard
+                // hasn't built up its own selection yet; otherwise echo the
+                // current state (matters when the user comes BACK to step 0).
+                initialSelected={
+                  selectedServices.length > 0
+                    ? selectedServices.map((s) => s.id)
+                    : pendingServiceIds
+                }
                 onChange={setSelectedServices}
                 onContinue={goNext}
                 totals={totals}
