@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 
 interface Props {
+  salonSlug: string;
   selectedServices: ServiceItem[];
   master: Master | null;
   date: Date;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function BookingCalendar({
+  salonSlug,
   selectedServices,
   master,
   date,
@@ -41,10 +43,10 @@ export function BookingCalendar({
   const [activeMaster, setActiveMaster] = useState<Master | null>(master);
   const [activeDate, setActiveDate] = useState<Date>(date);
 
-  // Fetch the salon's masters on mount.
+  // Fetch this salon's masters whenever slug changes.
   useEffect(() => {
     let cancelled = false;
-    fetchMasters()
+    fetchMasters(salonSlug)
       .then((items) => {
         if (cancelled) return;
         setMasters(items);
@@ -59,7 +61,7 @@ export function BookingCalendar({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [salonSlug]);
 
   // Reset selected time whenever master or date changes.
   useEffect(() => {

@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 const ease = [0.22, 1, 0.36, 1];
 
 interface Props {
+  /** Tenant slug — used to fetch this salon's catalog from the backend. */
+  salonSlug: string;
   /** Optional: pre-selected service ids */
   initialSelected?: string[];
   /** Called whenever selection changes */
@@ -32,6 +34,7 @@ interface Props {
 }
 
 export function ServiceSelection({
+  salonSlug,
   initialSelected = [],
   onChange,
   onContinue,
@@ -43,11 +46,11 @@ export function ServiceSelection({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch the salon's catalog from the backend on mount.
+  // Fetch this salon's catalog from the backend whenever the slug changes.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchServices()
+    fetchServices(salonSlug)
       .then((items) => {
         if (cancelled) return;
         setServices(items);
@@ -63,7 +66,7 @@ export function ServiceSelection({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [salonSlug]);
 
   const filtered = useMemo(
     () => (active === "all" ? services : services.filter((s) => s.category === active)),

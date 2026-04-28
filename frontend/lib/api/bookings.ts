@@ -1,8 +1,5 @@
 import { api } from "./client";
 
-const SALON_SLUG =
-  process.env.NEXT_PUBLIC_SALON_SLUG ?? "maison";
-
 export interface CreateBookingRequest {
   staffExternalId: string;
   serviceExternalIds: string[];
@@ -29,11 +26,14 @@ export interface BookingResponse {
   currency: string;
 }
 
-export function createBooking(req: CreateBookingRequest) {
-  return api<BookingResponse>(`/public/salons/${SALON_SLUG}/bookings`, {
-    method: "POST",
-    body: JSON.stringify(req)
-  });
+export function createBooking(salonSlug: string, req: CreateBookingRequest) {
+  return api<BookingResponse>(
+    `/public/salons/${encodeURIComponent(salonSlug)}/bookings`,
+    {
+      method: "POST",
+      body: JSON.stringify(req)
+    }
+  );
 }
 
 /** Builds the wall-clock ISO string the backend expects from a Date + "HH:MM" pair. */

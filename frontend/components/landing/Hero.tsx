@@ -9,8 +9,16 @@ import { Button } from "@/components/ui/button";
 
 const ease = [0.22, 1, 0.36, 1];
 
-export function Hero() {
+interface Props {
+  /** Optional tenant slug — when present, "Book now" links into this salon's
+   *  booking flow at `/[slug]/book`. Without it, the CTA links to a slug
+   *  picker / generic landing. */
+  salonSlug?: string;
+}
+
+export function Hero({ salonSlug }: Props = {}) {
   const t = useTranslations("Hero");
+  const bookHref = salonSlug ? `/${salonSlug}/book` : "/";
   return (
     <section className="relative min-h-[100svh] w-full overflow-hidden bg-ink text-bone">
       {/* Background image */}
@@ -81,7 +89,7 @@ export function Hero() {
             className="mt-10 flex flex-wrap gap-3"
           >
             <Button asChild variant="gold" size="lg">
-              <Link href="/book">
+              <Link href={bookHref}>
                 {t("ctaPrimary")}
                 <ArrowRight size={18} className="ml-1" />
               </Link>

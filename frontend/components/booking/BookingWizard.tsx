@@ -28,7 +28,12 @@ const steps = [
 
 const ease = [0.22, 1, 0.36, 1];
 
-export function BookingWizard() {
+interface Props {
+  /** Tenant slug from the URL — this booking is scoped to that salon. */
+  salonSlug: string;
+}
+
+export function BookingWizard({ salonSlug }: Props) {
   const [step, setStep] = useState(0);
 
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
@@ -69,7 +74,7 @@ export function BookingWizard() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await createBooking({
+      const res = await createBooking(salonSlug, {
         staffExternalId: master.id,
         serviceExternalIds: selectedServices.map((s) => s.id),
         startTime: toLocalDateTimeString(date, time),
@@ -135,6 +140,7 @@ export function BookingWizard() {
           >
             {step === 0 && (
               <ServiceStep
+                salonSlug={salonSlug}
                 initialSelected={selectedServices.map((s) => s.id)}
                 onChange={setSelectedServices}
                 onContinue={goNext}
@@ -145,6 +151,7 @@ export function BookingWizard() {
 
             {step === 1 && (
               <BookingCalendar
+                salonSlug={salonSlug}
                 selectedServices={selectedServices}
                 master={master}
                 date={date}
@@ -200,12 +207,14 @@ export function BookingWizard() {
 /* -------------------------------------------------------------------------- */
 
 function ServiceStep({
+  salonSlug,
   initialSelected,
   onChange,
   onContinue,
   totals,
   count
 }: {
+  salonSlug: string;
   initialSelected: string[];
   onChange: (s: ServiceItem[]) => void;
   onContinue: () => void;
@@ -225,6 +234,7 @@ function ServiceStep({
       </div>
 
       <ServiceSelection
+        salonSlug={salonSlug}
         variant="embedded"
         initialSelected={initialSelected}
         onChange={onChange}

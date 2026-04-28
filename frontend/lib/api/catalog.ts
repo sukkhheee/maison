@@ -2,9 +2,6 @@ import { api } from "./client";
 import type { ServiceItem, ServiceCategory } from "@/lib/data/services";
 import type { Master } from "@/lib/data/masters";
 
-const SALON_SLUG =
-  process.env.NEXT_PUBLIC_SALON_SLUG ?? "maison";
-
 interface PublicServiceDto {
   externalId: string;
   name: string;
@@ -22,16 +19,16 @@ interface PublicStaffDto {
   avatarUrl: string | null;
 }
 
-export async function fetchServices(): Promise<ServiceItem[]> {
+export async function fetchServices(salonSlug: string): Promise<ServiceItem[]> {
   const dto = await api<PublicServiceDto[]>(
-    `/public/salons/${SALON_SLUG}/services`
+    `/public/salons/${encodeURIComponent(salonSlug)}/services`
   );
   return dto.map(toService);
 }
 
-export async function fetchMasters(): Promise<Master[]> {
+export async function fetchMasters(salonSlug: string): Promise<Master[]> {
   const dto = await api<PublicStaffDto[]>(
-    `/public/salons/${SALON_SLUG}/staff`
+    `/public/salons/${encodeURIComponent(salonSlug)}/staff`
   );
   // The "any master" sentinel is dropped for now: backend has no auto-pick
   // logic so the simpler UX is to let the customer always pick explicitly.
