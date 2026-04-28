@@ -1,11 +1,11 @@
-import { Hero } from "@/components/landing/Hero";
-import { Stats } from "@/components/landing/Stats";
+import { SalonHeader } from "@/components/landing/SalonHeader";
 import { ServiceSelection } from "@/components/booking/ServiceSelection";
 
 /**
- * Public-facing landing for a single salon. Catalog (services + masters) is
- * fetched client-side from `/api/v1/public/salons/{slug}/...` so the same
- * static page works for every tenant without per-salon prerendering.
+ * Public-facing landing for a single salon. Compact salon-specific header +
+ * the service selection grid. Catalog (services) is fetched client-side from
+ * `/api/v1/public/salons/{slug}/services` so the same static page works for
+ * every tenant without per-salon prerendering.
  */
 export default function SalonHomePage({
   params
@@ -14,8 +14,7 @@ export default function SalonHomePage({
 }) {
   return (
     <>
-      <Hero salonSlug={params.slug} />
-      <Stats />
+      <SalonHeader salonSlug={params.slug} />
       <ServiceSelection salonSlug={params.slug} />
     </>
   );

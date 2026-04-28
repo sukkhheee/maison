@@ -8,6 +8,7 @@ import mn.salonbook.repository.SalonRepository;
 import mn.salonbook.repository.ServiceItemRepository;
 import mn.salonbook.repository.StaffRepository;
 import mn.salonbook.service.exception.NotFoundException;
+import mn.salonbook.web.dto.PublicSalonSummary;
 import mn.salonbook.web.dto.PublicServiceItem;
 import mn.salonbook.web.dto.PublicStaff;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,12 @@ public class PublicCatalogController {
     private final SalonRepository salonRepo;
     private final ServiceItemRepository serviceRepo;
     private final StaffRepository staffRepo;
+
+    @GetMapping
+    @Transactional(readOnly = true)
+    public PublicSalonSummary getSalon(@PathVariable String salonSlug) {
+        return PublicSalonSummary.of(resolveSalon(salonSlug));
+    }
 
     @GetMapping("/services")
     @Transactional(readOnly = true)
