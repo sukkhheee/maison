@@ -2,11 +2,20 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Mail, Phone, UserCircle2 } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Mail,
+  Phone,
+  UserCircle2,
+  Clock
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Skeleton, ErrorBlock } from "@/components/shared/Skeleton";
 import { StaffFormDialog } from "@/components/staff/StaffFormDialog";
+import { StaffScheduleDialog } from "@/components/staff/StaffScheduleDialog";
 import { useApi } from "@/lib/useApi";
 import {
   deleteStaff,
@@ -21,6 +30,7 @@ export default function StaffPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminStaffDetail | null>(null);
   const [deleting, setDeleting] = useState<AdminStaffDetail | null>(null);
+  const [schedulingFor, setSchedulingFor] = useState<AdminStaffDetail | null>(null);
 
   const staff = data ?? [];
   const activeCount = staff.filter((s) => s.active).length;
@@ -76,6 +86,7 @@ export default function StaffPage() {
               staff={s}
               onEdit={() => setEditing(s)}
               onDelete={() => setDeleting(s)}
+              onSchedule={() => setSchedulingFor(s)}
             />
           ))}
         </motion.div>
@@ -110,6 +121,12 @@ export default function StaffPage() {
         confirmLabel="Идэвхгүй болгох"
         danger
       />
+      <StaffScheduleDialog
+        open={schedulingFor !== null}
+        onClose={() => setSchedulingFor(null)}
+        staffId={schedulingFor?.id ?? null}
+        staffName={schedulingFor?.displayName ?? ""}
+      />
     </div>
   );
 }
@@ -119,11 +136,13 @@ export default function StaffPage() {
 function StaffCard({
   staff,
   onEdit,
-  onDelete
+  onDelete,
+  onSchedule
 }: {
   staff: AdminStaffDetail;
   onEdit: () => void;
   onDelete: () => void;
+  onSchedule: () => void;
 }) {
   // Re-use the calendar's hue mapping so the staff card matches booking colors.
   const master = staffToMaster({
@@ -207,6 +226,13 @@ function StaffCard({
         >
           <Pencil size={12} />
           Засах
+        </button>
+        <button
+          onClick={onSchedule}
+          className="flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-md text-xs font-medium text-fg-muted hover:text-fg hover:bg-surface-2 transition"
+        >
+          <Clock size={12} />
+          Хуваарь
         </button>
         {staff.active && (
           <button

@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import mn.salonbook.service.AdminStaffManagement;
 import mn.salonbook.web.dto.admin.AdminStaffDetail;
 import mn.salonbook.web.dto.admin.StaffCreateRequest;
+import mn.salonbook.web.dto.admin.StaffScheduleEntry;
+import mn.salonbook.web.dto.admin.StaffScheduleUpdateRequest;
 import mn.salonbook.web.dto.admin.StaffUpdateRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,5 +58,22 @@ public class AdminStaffController {
     ) {
         service.delete(salonSlug, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/schedule")
+    public List<StaffScheduleEntry> getSchedule(
+        @PathVariable String salonSlug,
+        @PathVariable Long id
+    ) {
+        return service.getSchedule(salonSlug, id);
+    }
+
+    @PutMapping("/{id}/schedule")
+    public List<StaffScheduleEntry> replaceSchedule(
+        @PathVariable String salonSlug,
+        @PathVariable Long id,
+        @Valid @RequestBody StaffScheduleUpdateRequest req
+    ) {
+        return service.replaceSchedule(salonSlug, id, req);
     }
 }

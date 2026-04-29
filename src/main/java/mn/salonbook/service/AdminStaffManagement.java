@@ -3,9 +3,11 @@ package mn.salonbook.service;
 import lombok.RequiredArgsConstructor;
 import mn.salonbook.domain.entity.Salon;
 import mn.salonbook.domain.entity.Staff;
+import mn.salonbook.domain.entity.StaffSchedule;
 import mn.salonbook.domain.entity.User;
 import mn.salonbook.domain.enums.Role;
 import mn.salonbook.repository.StaffRepository;
+import mn.salonbook.repository.StaffScheduleRepository;
 import mn.salonbook.repository.UserRepository;
 import mn.salonbook.security.TenantGuard;
 import mn.salonbook.service.exception.ConflictException;
@@ -17,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -26,8 +30,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminStaffManagement {
 
+    /** Default working hours seeded for newly-created staff. Until we ship a
+     *  schedule editor in the admin UI, every staff opens 09:00–20:00 every
+     *  day; admins can adjust per-row in the DB if needed. */
+    private static final LocalTime DEFAULT_START = LocalTime.of(9, 0);
+    private static final LocalTime DEFAULT_END = LocalTime.of(20, 0);
+
     private final StaffRepository staffRepo;
     private final UserRepository userRepo;
+    private final StaffScheduleRepository scheduleRepo;
     private final PasswordEncoder passwordEncoder;
     private final TenantGuard tenantGuard;
 
@@ -82,7 +93,28 @@ public class AdminStaffManagement {
             .user(user)
             .build();
         staff.setSalonId(salon.getId());
-        return AdminStaffDetail.of(staffRepo.save(staff));
+        Staff saved = staffRepo.save(staff);
+
+        seedDefaultSchedule(saved);
+        return AdminStaffDetail.of(saved);
+    }
+
+    /**
+     * Creates a default Mon-Sun, 09:00–20:00 schedule so new staff can
+     * receive bookings immediately. Without this, BookingService rejects
+     * every slot with "OUTSIDE_WORKING_HOURS" because no shifts are defined.
+     */
+    private void seedDefaultSchedule(Staff staff) {
+        for (DayOfWeek day : DayOfWeek.values()) {
+            StaffSchedule shift = StaffSchedule.builder()
+                .staff(staff)
+                .dayOfWeek(day)
+                .startTime(DEFAULT_START)
+                .endTime(DEFAULT_END)
+                .build();
+            shift.setSalonId(staff.getSalonId());
+            scheduleRepo.save(shift);
+        }
     }
 
     @Transactional
@@ -109,6 +141,68 @@ public class AdminStaffManagement {
         // Soft-delete: existing bookings keep working. Hard delete would break booking FKs.
         staff.setActive(false);
         staffRepo.save(staff);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Working-hours (StaffSchedule) management                            */
+    /* ------------------------------------------------------------------ */
+
+    @Transactional(readOnly = true)
+    public List<mn.salonbook.web.dto.admin.StaffScheduleEntry> getSchedule(
+        String salonSlug, Long staffId
+    ) {
+        Salon salon = tenantGuard.requireSalonAccess(salonSlug);
+        Staff staff = loadInTenant(staffId, salon.getId());
+        return scheduleRepo.findByStaffIdOrderByDayOfWeekAscStartTimeAsc(staff.getId())
+            .stream()
+            .map(mn.salonbook.web.dto.admin.StaffScheduleEntry::of)
+            .toList();
+    }
+
+    /**
+     * Atomic replacement: wipes all existing schedule rows for {@code staffId}
+     * and inserts the new set. Sent as a single PUT so the admin UI doesn't
+     * need to track per-row CRUD operations.
+     */
+    @Transactional
+    public List<mn.salonbook.web.dto.admin.StaffScheduleEntry> replaceSchedule(
+        String salonSlug, Long staffId,
+        mn.salonbook.web.dto.admin.StaffScheduleUpdateRequest req
+    ) {
+        Salon salon = tenantGuard.requireSalonAccess(salonSlug);
+        Staff staff = loadInTenant(staffId, salon.getId());
+
+        // Validate each entry: end strictly after start, no zero-length slots.
+        for (var entry : req.schedule()) {
+            if (!entry.startTime().isBefore(entry.endTime())) {
+                throw new IllegalArgumentException(
+                    "Shift on %s must end after it starts (got %s–%s)"
+                        .formatted(entry.dayOfWeek(), entry.startTime(), entry.endTime()));
+            }
+        }
+
+        // Replace strategy — simpler than diffing for the admin UI's "save all" pattern.
+        scheduleRepo.deleteByStaffId(staff.getId());
+        // Force flush so the DELETE precedes the INSERTs in the same transaction;
+        // otherwise Hibernate's reorder may try to insert duplicates and trip the
+        // (staff_id, day_of_week, start_time) unique constraint.
+        scheduleRepo.flush();
+
+        List<StaffSchedule> created = req.schedule().stream().map(e -> {
+            StaffSchedule shift = StaffSchedule.builder()
+                .staff(staff)
+                .dayOfWeek(e.dayOfWeek())
+                .startTime(e.startTime())
+                .endTime(e.endTime())
+                .build();
+            shift.setSalonId(salon.getId());
+            return shift;
+        }).toList();
+        scheduleRepo.saveAll(created);
+
+        return created.stream()
+            .map(mn.salonbook.web.dto.admin.StaffScheduleEntry::of)
+            .toList();
     }
 
     /* ------------------------------------------------------------------ */
