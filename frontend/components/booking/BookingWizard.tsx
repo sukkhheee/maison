@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, CalendarCheck2, PartyPopper, Sparkles } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, Loader2, PartyPopper } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { StepIndicator } from "./StepIndicator";
-import { ServiceSelection } from "./ServiceSelection";
 import { BookingCalendar } from "./BookingCalendar";
 import { BookingSummary, type CustomerForm } from "./BookingSummary";
 import { QpayPaymentDialog } from "./QpayPaymentDialog";
 import { Button } from "@/components/ui/button";
 import { type Master } from "@/lib/data/masters";
 import type { ServiceItem } from "@/lib/data/services";
-import { formatDuration, formatMnt } from "@/lib/utils";
+import { fetchServices } from "@/lib/api/catalog";
 import {
   createBooking,
   toLocalDateTimeString,
@@ -22,7 +22,6 @@ import {
 import { ApiError } from "@/lib/api/client";
 
 const steps = [
-  { id: "service", label: "Үйлчилгээ" },
   { id: "calendar", label: "Мастер & цаг" },
   { id: "confirm", label: "Баталгаажуулалт" }
 ];
@@ -38,38 +37,64 @@ interface Props {
 const PENDING_KEY = "salonbook.pending-services";
 
 export function BookingWizard({ salonSlug }: Props) {
+  const router = useRouter();
   const { user } = useAuth();
   const [step, setStep] = useState(0);
 
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
   /**
-   * Service ids handed over from the landing page via sessionStorage. Read
-   * once on mount, then cleared so a refresh of /book starts blank. The
-   * embedded ServiceSelection picks these up via its `initialSelected` prop
-   * and fires onChange after fetching the catalog, which populates
-   * `selectedServices` with full ServiceItem objects.
+   * Hydration state for the service handoff. We always arrive here with a list
+   * of service ids in sessionStorage (the landing page's "Continue" button is
+   * the only legitimate way in); fetching the catalog and matching ids gives us
+   * full ServiceItem objects so totals + the summary render correctly.
+   *
+   * If there is no handoff (someone typed /book directly), we bounce back to
+   * the salon landing page so they can pick services first.
    */
-  const [pendingServiceIds, setPendingServiceIds] = useState<string[]>([]);
-  /** Whether the customer arrived via the landing page (services pre-selected).
-   *  When true, we skip step 0 the moment ServiceSelection finishes hydrating. */
-  const arrivedFromLanding = useRef(false);
-  /** One-shot guard so going BACK to step 0 from step 1 doesn't re-skip forward. */
-  const autoSkippedRef = useRef(false);
+  const [hydrating, setHydrating] = useState(true);
+  const [hydrationError, setHydrationError] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.sessionStorage.getItem(PENDING_KEY);
-    if (!raw) return;
-    try {
-      const ids = JSON.parse(raw) as string[];
-      if (Array.isArray(ids) && ids.length > 0) {
-        setPendingServiceIds(ids);
-        arrivedFromLanding.current = true;
+    let ids: string[] = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as string[];
+        if (Array.isArray(parsed)) ids = parsed;
+      } catch {
+        /* ignore malformed value */
       }
-    } catch {
-      /* ignore malformed value */
+      window.sessionStorage.removeItem(PENDING_KEY);
     }
-    window.sessionStorage.removeItem(PENDING_KEY);
-  }, []);
+    if (ids.length === 0) {
+      // Nothing to book — send the customer to the salon landing page so they
+      // can pick services. We use replace to keep the back button sane.
+      router.replace(`/${salonSlug}`);
+      return;
+    }
+    let cancelled = false;
+    fetchServices(salonSlug)
+      .then((all) => {
+        if (cancelled) return;
+        const picked = all.filter((s) => ids.includes(s.id));
+        if (picked.length === 0) {
+          router.replace(`/${salonSlug}`);
+          return;
+        }
+        setSelectedServices(picked);
+        setHydrating(false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setHydrationError(e?.message ?? "Үйлчилгээний жагсаалтыг ачаалж чадсангүй.");
+        setHydrating(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [salonSlug, router]);
+
   // Master is null until BookingCalendar fetches the salon's staff and the
   // user picks (or auto-selects) one.
   const [master, setMaster] = useState<Master | null>(null);
@@ -96,19 +121,6 @@ export function BookingWizard({ salonSlug }: Props) {
       email: prev.email || user.email
     }));
   }, [user]);
-
-  // If the customer arrived from the landing page with services already chosen,
-  // skip Step 1 (Service selection) automatically so they don't have to re-pick.
-  // The skip fires once selectedServices has been populated by ServiceSelection's
-  // catalog-hydration onChange, and only once per wizard mount.
-  useEffect(() => {
-    if (autoSkippedRef.current) return;
-    if (!arrivedFromLanding.current) return;
-    if (selectedServices.length === 0) return;
-    if (step !== 0) return;
-    autoSkippedRef.current = true;
-    setStep(1);
-  }, [selectedServices, step]);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -152,7 +164,7 @@ export function BookingWizard({ salonSlug }: Props) {
           );
           // Send the user back to the calendar step with cleared time so they can repick.
           setTime(null);
-          setTimeout(() => setStep(1), 600);
+          setTimeout(() => setStep(0), 600);
         } else if (err.code === "OUTSIDE_WORKING_HOURS") {
           setSubmitError("Энэ мастерын ажлын цагт энэ цаг багтахгүй байна.");
         } else {
@@ -170,16 +182,37 @@ export function BookingWizard({ salonSlug }: Props) {
     return <BookingConfirmed booking={confirmed} signedIn={!!user} />;
   }
 
+  if (hydrating) {
+    return (
+      <div className="bg-bone min-h-[100svh] grid place-items-center">
+        <Loader2 className="animate-spin text-ink/40" size={28} />
+      </div>
+    );
+  }
+
+  if (hydrationError) {
+    return (
+      <div className="bg-bone min-h-[100svh] grid place-items-center px-4">
+        <div className="max-w-md text-center">
+          <p className="text-rose-700">{hydrationError}</p>
+          <Button asChild variant="gold" className="mt-6">
+            <Link href={`/${salonSlug}`}>Үйлчилгээ сонгох</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-bone min-h-screen">
       <div className="container pt-28 pb-24">
         <div className="flex items-center justify-between gap-4 mb-10">
           <Link
-            href="/"
+            href={`/${salonSlug}`}
             className="inline-flex items-center gap-2 text-sm text-ink/60 hover:text-ink transition"
           >
             <ArrowLeft size={16} />
-            Нүүр хуудас
+            Үйлчилгээ сонгох рүү буцах
           </Link>
         </div>
 
@@ -196,24 +229,6 @@ export function BookingWizard({ salonSlug }: Props) {
             transition={{ duration: 0.4, ease }}
           >
             {step === 0 && (
-              <ServiceStep
-                salonSlug={salonSlug}
-                // Prefer ids carried over from the landing page if the wizard
-                // hasn't built up its own selection yet; otherwise echo the
-                // current state (matters when the user comes BACK to step 0).
-                initialSelected={
-                  selectedServices.length > 0
-                    ? selectedServices.map((s) => s.id)
-                    : pendingServiceIds
-                }
-                onChange={setSelectedServices}
-                onContinue={goNext}
-                totals={totals}
-                count={selectedServices.length}
-              />
-            )}
-
-            {step === 1 && (
               <BookingCalendar
                 salonSlug={salonSlug}
                 selectedServices={selectedServices}
@@ -226,11 +241,13 @@ export function BookingWizard({ salonSlug }: Props) {
                   setTime(t);
                 }}
                 onContinue={goNext}
-                onBack={goBack}
+                // No previous wizard step — "Back" jumps the customer to the
+                // salon landing page so they can re-pick services.
+                onBack={() => router.push(`/${salonSlug}`)}
               />
             )}
 
-            {step === 2 && time && master && (
+            {step === 1 && time && master && (
               <BookingSummary
                 services={selectedServices}
                 master={master}
@@ -264,77 +281,6 @@ export function BookingWizard({ salonSlug }: Props) {
           setPendingBooking(null);
         }}
       />
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-
-function ServiceStep({
-  salonSlug,
-  initialSelected,
-  onChange,
-  onContinue,
-  totals,
-  count
-}: {
-  salonSlug: string;
-  initialSelected: string[];
-  onChange: (s: ServiceItem[]) => void;
-  onContinue: () => void;
-  totals: { minutes: number; price: number };
-  count: number;
-}) {
-  return (
-    <div>
-      <div className="max-w-2xl mb-8">
-        <span className="eyebrow">— Алхам 1</span>
-        <h2 className="mt-2 font-serif text-3xl sm:text-4xl tracking-luxury-tight">
-          Үйлчилгээгээ сонгоно уу
-        </h2>
-        <p className="mt-2 text-ink/55">
-          Олон үйлчилгээг нэг захиалгад нэгтгэх боломжтой.
-        </p>
-      </div>
-
-      <ServiceSelection
-        salonSlug={salonSlug}
-        variant="embedded"
-        initialSelected={initialSelected}
-        onChange={onChange}
-      />
-
-      <AnimatePresence>
-        {count > 0 && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ duration: 0.4, ease }}
-            className="sticky bottom-4 z-30 mt-10"
-          >
-            <div className="glass-light rounded-2xl shadow-soft p-4 flex items-center gap-4">
-              <div className="hidden sm:grid h-12 w-12 rounded-full bg-gold-gradient place-items-center text-ink">
-                <Sparkles size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs uppercase tracking-luxury-wide text-ink/50">
-                  Сонгосон {count} үйлчилгээ
-                </p>
-                <p className="font-serif text-lg sm:text-xl truncate">
-                  {formatMnt(totals.price)} ·{" "}
-                  <span className="text-ink/60">
-                    {formatDuration(totals.minutes)}
-                  </span>
-                </p>
-              </div>
-              <Button variant="gold" onClick={onContinue}>
-                Үргэлжлүүлэх
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
