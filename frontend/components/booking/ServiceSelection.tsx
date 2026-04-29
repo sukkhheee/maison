@@ -239,11 +239,12 @@ export function ServiceSelection({
               // the CTA hides behind Chrome iOS / Android navigation UI.
               // z-50 outranks the also-fixed Navbar so they never collide.
               style={{
-                bottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 0.75rem))"
+                paddingBottom:
+                  "max(0px, calc(env(safe-area-inset-bottom) - 0.5rem))"
               }}
-              className="fixed left-1/2 -translate-x-1/2 z-50 w-[min(96%,720px)]"
+              className="fixed bottom-0 inset-x-0 z-50 w-full"
             >
-              <div className="glass-light rounded-2xl shadow-soft p-3 sm:p-4 flex items-center gap-3 sm:gap-5">
+              <div className="glass-light border-t border-ink/5 shadow-soft px-4 sm:px-8 py-3 sm:py-4 flex items-center gap-3 sm:gap-5">
                 <div className="hidden sm:grid h-12 w-12 rounded-full bg-gold-gradient place-items-center text-ink shrink-0">
                   <Sparkles size={18} />
                 </div>
