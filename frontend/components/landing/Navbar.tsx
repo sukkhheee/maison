@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -16,15 +16,8 @@ export function Navbar() {
     { href: "/#story", label: t("story") }
   ];
 
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const scrolled = true;
 
   return (
     <motion.header
@@ -33,9 +26,7 @@ export function Navbar() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
         "fixed top-0 inset-x-0 z-50 transition-all duration-500",
-        scrolled
-          ? "glass-light border-b border-ink/5 py-3"
-          : "bg-transparent py-5"
+        "glass-light border-b border-ink/5 py-3"
       )}
     >
       <div className="container flex items-center justify-between">
