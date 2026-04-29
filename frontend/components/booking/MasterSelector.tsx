@@ -29,10 +29,10 @@ export function MasterSelector({ masters, selectedId, onSelect }: Props) {
       {/* Header */}
       <div className="flex items-end justify-between mb-6">
         <div>
-          <span className="eyebrow">— Мастер сонгох</span>
-          <h3 className="mt-2 font-serif text-3xl tracking-luxury-tight">
+          <span className="eyebrow">— Barber сонгох</span>
+          {/* <h3 className="mt-2 font-serif text-3xl tracking-luxury-tight">
             Хэнтэй ажиллахаа сонго
-          </h3>
+          </h3> */}
         </div>
 
         <div className="hidden sm:flex items-center gap-2">
