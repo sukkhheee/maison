@@ -4,12 +4,14 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { CalendarCheck2, Menu, User2 } from "lucide-react";
+import { CalendarCheck2, LogOut, Menu, User2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export function Navbar() {
   const t = useTranslations("Navbar");
+  const { user, signOut } = useAuth();
   const navLinks = [
     { href: "/#services", label: t("services") },
     { href: "/#masters", label: t("masters") },
@@ -82,18 +84,52 @@ export function Navbar() {
             <CalendarCheck2 size={16} />
             {t("myBookings")}
           </Link>
-          <Link
-            href="/login"
-            className={cn(
-              "inline-flex items-center gap-2 px-5 py-2 rounded-md text-sm border transition-all",
-              scrolled
-                ? "border-ink/20 text-ink hover:border-gold hover:text-gold-700"
-                : "border-bone/30 text-bone hover:border-gold hover:bg-bone/5"
-            )}
-          >
-            <User2 size={16} />
-            {t("login")}
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-2 pl-2 border-l border-ink/10">
+              <Link
+                href="/bookings"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-ink/80 hover:text-ink hover:bg-ink/5"
+                title={user.email}
+              >
+                {user.avatarUrl ? (
+                  // Google avatars are served from googleusercontent.com — using
+                  // a plain <img> avoids needing to allowlist the host in next.config.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="h-7 w-7 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="h-7 w-7 rounded-full bg-ink text-bone grid place-items-center text-xs">
+                    {user.fullName.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="max-w-[120px] truncate">{user.fullName.split(" ")[0]}</span>
+              </Link>
+              <button
+                onClick={signOut}
+                aria-label="Гарах"
+                title="Гарах"
+                className="p-2 rounded-md text-ink/60 hover:text-ink hover:bg-ink/5 transition"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className={cn(
+                "inline-flex items-center gap-2 px-5 py-2 rounded-md text-sm border transition-all",
+                scrolled
+                  ? "border-ink/20 text-ink hover:border-gold hover:text-gold-700"
+                  : "border-bone/30 text-bone hover:border-gold hover:bg-bone/5"
+              )}
+            >
+              <User2 size={16} />
+              {t("login")}
+            </Link>
+          )}
         </div>
 
         {/* Mobile trigger */}
@@ -133,16 +169,31 @@ export function Navbar() {
           <div className="flex gap-3 pt-2">
             <Link
               href="/bookings"
+              onClick={() => setOpen(false)}
               className="flex-1 text-center py-3 rounded-md border border-ink/20 text-ink"
             >
               {t("myBookings")}
             </Link>
-            <Link
-              href="/login"
-              className="flex-1 text-center py-3 rounded-md bg-ink text-bone"
-            >
-              {t("login")}
-            </Link>
+            {user ? (
+              <button
+                onClick={() => {
+                  signOut();
+                  setOpen(false);
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-md bg-ink text-bone"
+              >
+                <LogOut size={16} />
+                Гарах
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex-1 text-center py-3 rounded-md bg-ink text-bone"
+              >
+                {t("login")}
+              </Link>
+            )}
           </div>
         </div>
       </motion.div>

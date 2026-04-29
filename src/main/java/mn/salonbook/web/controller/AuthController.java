@@ -9,6 +9,7 @@ import mn.salonbook.web.dto.auth.AuthResponse;
 import mn.salonbook.web.dto.auth.LoginRequest;
 import mn.salonbook.web.dto.auth.MeResponse;
 import mn.salonbook.web.dto.auth.RegisterSalonRequest;
+import mn.salonbook.web.dto.auth.SocialLoginRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -33,6 +34,11 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest req) {
         return authService.login(req);
+    }
+
+    @PostMapping("/social-login")
+    public AuthResponse socialLogin(@Valid @RequestBody SocialLoginRequest req) {
+        return authService.socialLogin(req);
     }
 
     @GetMapping("/me")

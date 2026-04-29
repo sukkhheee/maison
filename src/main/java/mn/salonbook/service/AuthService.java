@@ -14,6 +14,7 @@ import mn.salonbook.web.dto.auth.AuthResponse;
 import mn.salonbook.web.dto.auth.LoginRequest;
 import mn.salonbook.web.dto.auth.MeResponse;
 import mn.salonbook.web.dto.auth.RegisterSalonRequest;
+import mn.salonbook.web.dto.auth.SocialLoginRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class AuthService {
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final GoogleTokenVerifier googleTokenVerifier;
 
     @Transactional
     public AuthResponse registerSalon(RegisterSalonRequest req) {
@@ -89,6 +91,65 @@ public class AuthService {
             ? salonRepo.findById(user.getSalonId()).orElse(null)
             : null;
 
+        String token = jwtService.generateAccessToken(user);
+        return AuthResponse.of(token, jwtService.getTtlSeconds(), MeResponse.of(user, salon));
+    }
+
+    /**
+     * Exchanges a verified Google ID token for one of our own JWTs. The first
+     * time a Google account signs in we create a CLIENT user; subsequent logins
+     * find the same row by {@code google_id} (preferred) or {@code email}.
+     *
+     * <p>If a CLIENT row already exists for the same email (e.g. they booked as
+     * a guest before), we *attach* the Google identity to it so their booking
+     * history merges instead of forking into two accounts.
+     */
+    @Transactional
+    public AuthResponse socialLogin(SocialLoginRequest req) {
+        if (!"google".equalsIgnoreCase(req.provider())) {
+            throw new AuthException("Дэмжигдээгүй нэвтрэлтийн провайдер: " + req.provider());
+        }
+        GoogleTokenVerifier.GoogleIdentity identity =
+            googleTokenVerifier.verify(req.idToken());
+        if (!identity.emailVerified()) {
+            throw new AuthException("Google имэйл хаяг баталгаажаагүй байна.");
+        }
+
+        User user = userRepo.findByGoogleId(identity.googleSub())
+            .or(() -> userRepo.findFirstByEmailAndRole(identity.email(), Role.CLIENT))
+            .orElse(null);
+
+        if (user == null) {
+            user = userRepo.save(User.builder()
+                .email(identity.email())
+                // Random hash so the NOT NULL column stays satisfied; password
+                // login for this account will never succeed.
+                .passwordHash(passwordEncoder.encode("__google__" + System.nanoTime()))
+                .fullName(identity.name() != null ? identity.name() : identity.email())
+                .role(Role.CLIENT)
+                .salonId(null)
+                .enabled(true)
+                .googleId(identity.googleSub())
+                .avatarUrl(identity.picture())
+                .build());
+            log.info("New Google user: email={}", identity.email());
+        } else {
+            boolean changed = false;
+            if (user.getGoogleId() == null) {
+                user.setGoogleId(identity.googleSub());
+                changed = true;
+            }
+            if (identity.picture() != null
+                && !identity.picture().equals(user.getAvatarUrl())) {
+                user.setAvatarUrl(identity.picture());
+                changed = true;
+            }
+            if (changed) userRepo.save(user);
+        }
+
+        Salon salon = user.getSalonId() != null
+            ? salonRepo.findById(user.getSalonId()).orElse(null)
+            : null;
         String token = jwtService.generateAccessToken(user);
         return AuthResponse.of(token, jwtService.getTtlSeconds(), MeResponse.of(user, salon));
     }

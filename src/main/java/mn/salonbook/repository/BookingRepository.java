@@ -50,6 +50,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findAllByClientIdOrderByStartTimeDesc(Long clientId);
 
     /**
+     * "Миний захиалгууд" page query — eagerly fetches staff + services so the
+     * customer DTO mapper can read their names without triggering N+1 queries
+     * after the transaction has closed.
+     */
+    @Query("""
+        SELECT DISTINCT b FROM Booking b
+          LEFT JOIN FETCH b.staff
+          LEFT JOIN FETCH b.services
+        WHERE b.client.id = :clientId
+        ORDER BY b.startTime DESC
+        """)
+    List<Booking> findAllByClientIdWithDetails(@Param("clientId") Long clientId);
+
+    /**
      * Admin query — all bookings whose start_time falls in [from, to). Used by
      * the calendar (single day), the booking table (range), and the stats
      * aggregator. Eagerly fetches services + staff + client to avoid N+1 in DTO mapping.

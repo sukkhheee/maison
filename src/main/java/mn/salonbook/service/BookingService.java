@@ -129,7 +129,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<Booking> listForClient(Long clientId) {
-        return bookingRepo.findAllByClientIdOrderByStartTimeDesc(clientId);
+        return bookingRepo.findAllByClientIdWithDetails(clientId);
     }
 
     /* ----------------------------------------------------------------------- */

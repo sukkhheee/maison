@@ -12,7 +12,8 @@ public record MeResponse(
     Long salonId,
     String salonSlug,
     String salonName,
-    String salonTimezone
+    String salonTimezone,
+    String avatarUrl
 ) {
     public static MeResponse of(User user, Salon salon) {
         return new MeResponse(
@@ -23,7 +24,8 @@ public record MeResponse(
             user.getSalonId(),
             salon != null ? salon.getSlug() : null,
             salon != null ? salon.getName() : null,
-            salon != null ? salon.getTimezone() : null
+            salon != null ? salon.getTimezone() : null,
+            user.getAvatarUrl()
         );
     }
 }

@@ -1,0 +1,23 @@
+# Activated when SPRING_PROFILES_ACTIVE=prod.
+#
+# Stricter defaults than the base application.yml:
+#   - DataSeeder is gated by !prod, so the demo "maison" salon is NOT created.
+#   - Flyway is the only schema authority; JPA validates entities match.
+
+spring:
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      # Flyway owns the schema in production. JPA refuses to start if entities
+      # diverge from the migrated tables — caught at deploy time, not in prod traffic.
+      ddl-auto: ${SPRING_JPA_DDL_AUTO:validate}
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    mn.salonbook: INFO
+    org.hibernate.SQL: WARN

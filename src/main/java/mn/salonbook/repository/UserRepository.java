@@ -26,4 +26,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     java.util.List<User> findLoginCandidatesByEmail(@org.springframework.data.repository.query.Param("email") String email);
 
     boolean existsByEmailAndRole(String email, Role role);
+
+    Optional<User> findByGoogleId(String googleId);
 }

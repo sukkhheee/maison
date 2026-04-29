@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, PartyPopper, Sparkles } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, PartyPopper, Sparkles } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { StepIndicator } from "./StepIndicator";
 import { ServiceSelection } from "./ServiceSelection";
 import { BookingCalendar } from "./BookingCalendar";
@@ -37,6 +38,7 @@ interface Props {
 const PENDING_KEY = "salonbook.pending-services";
 
 export function BookingWizard({ salonSlug }: Props) {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
 
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
@@ -77,6 +79,17 @@ export function BookingWizard({ salonSlug }: Props) {
     phone: "",
     email: ""
   });
+
+  // Auto-fill the contact form from the signed-in user's profile so customers
+  // don't have to retype name + email on every booking.
+  useEffect(() => {
+    if (!user) return;
+    setCustomer((prev) => ({
+      name: prev.name || user.fullName,
+      phone: prev.phone,
+      email: prev.email || user.email
+    }));
+  }, [user]);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -135,7 +148,7 @@ export function BookingWizard({ salonSlug }: Props) {
   };
 
   if (confirmed) {
-    return <BookingConfirmed booking={confirmed} />;
+    return <BookingConfirmed booking={confirmed} signedIn={!!user} />;
   }
 
   return (
@@ -309,7 +322,13 @@ function ServiceStep({
 
 /* -------------------------------------------------------------------------- */
 
-function BookingConfirmed({ booking }: { booking: BookingResponse }) {
+function BookingConfirmed({
+  booking,
+  signedIn
+}: {
+  booking: BookingResponse;
+  signedIn: boolean;
+}) {
   return (
     <div className="bg-bone min-h-[100svh] grid place-items-center px-4 pt-24">
       <motion.div
@@ -339,13 +358,29 @@ function BookingConfirmed({ booking }: { booking: BookingResponse }) {
         <div className="gold-divider my-8" />
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button asChild variant="gold">
-            <Link href="/bookings">Миний захиалгууд</Link>
-          </Button>
+          {signedIn ? (
+            <Button asChild variant="gold">
+              <Link href="/bookings" className="inline-flex items-center gap-2">
+                <CalendarCheck2 size={16} />
+                Миний захиалгууд
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="gold">
+              <Link href="/login">Захиалгаа хадгалахын тулд нэвтрэх</Link>
+            </Button>
+          )}
           <Button asChild variant="outline">
             <Link href="/">Нүүр рүү буцах</Link>
           </Button>
         </div>
+
+        {!signedIn && (
+          <p className="mt-6 text-xs text-ink/45 leading-relaxed">
+            Нэвтэрсэн тохиолдолд таны бүх захиалгыг нэг дороос харах боломжтой
+            болно.
+          </p>
+        )}
       </motion.div>
     </div>
   );

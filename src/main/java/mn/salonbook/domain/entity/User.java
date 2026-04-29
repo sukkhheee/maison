@@ -42,7 +42,11 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String email;
 
-    /** BCrypt-encoded password hash. */
+    /**
+     * BCrypt-encoded password hash. Always present today — social-login users
+     * still get a randomly-generated hash so this column stays NOT NULL and the
+     * existing password-login code path keeps working unchanged.
+     */
     @NotBlank
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
@@ -67,4 +71,12 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private boolean enabled = true;
+
+    /** Google "sub" claim — stable user id from Google. NULL for password accounts. */
+    @Column(name = "google_id", length = 64)
+    private String googleId;
+
+    /** Cached profile picture URL from the social provider. */
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
 }

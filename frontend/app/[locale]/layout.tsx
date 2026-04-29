@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { Inter, Playfair_Display } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import Script from "next/script";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { locales, type Locale } from "@/i18n/config";
 import "../globals.css";
 
@@ -56,10 +58,16 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen flex flex-col">
+        {/* Google Identity Services — provides window.google.accounts for the
+            Google Sign-In button on /login. Loaded once at the layout level so
+            switching between routes doesn't refetch it. */}
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <AuthProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>
