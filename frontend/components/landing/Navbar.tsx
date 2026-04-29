@@ -14,7 +14,7 @@ export function Navbar() {
   const { user, signOut } = useAuth();
   const navLinks = [
     { href: "/#services", label: t("services") },
-    { href: "/#masters", label: t("masters") },
+    // { href: "/#masters", label: t("masters") },
     { href: "/#story", label: t("story") }
   ];
 
