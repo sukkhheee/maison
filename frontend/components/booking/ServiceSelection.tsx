@@ -4,11 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock, Loader2, Sparkles } from "lucide-react";
-import {
-  categories,
-  type ServiceCategory,
-  type ServiceItem
-} from "@/lib/data/services";
+import { type ServiceItem } from "@/lib/data/services";
 import { fetchServices } from "@/lib/api/catalog";
 import { useRouter } from "@/i18n/navigation";
 import { cn, formatDuration, formatMnt } from "@/lib/utils";
@@ -49,7 +45,6 @@ export function ServiceSelection({
   variant = "section"
 }: Props) {
   const router = useRouter();
-  const [active, setActive] = useState<ServiceCategory | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected));
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,10 +104,7 @@ export function ServiceSelection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salonSlug]);
 
-  const filtered = useMemo(
-    () => (active === "all" ? services : services.filter((s) => s.category === active)),
-    [active, services]
-  );
+  const filtered = services;
 
   const selectedItems = useMemo(
     () => services.filter((s) => selected.has(s.id)),
@@ -158,24 +150,6 @@ export function ServiceSelection({
           </p>
         </motion.div>
       )}
-
-      {/* Category filter */}
-      <div className={cn("flex flex-wrap gap-2", isEmbedded ? "mt-0" : "mt-12")}>
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setActive(c.id)}
-            className={cn(
-              "px-5 py-2.5 rounded-full text-sm transition-all duration-300 border",
-              active === c.id
-                ? "bg-ink text-bone border-ink shadow-soft"
-                : "bg-transparent text-ink/70 border-ink/15 hover:border-gold hover:text-ink"
-            )}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
 
       {/* Cards grid (or loading / empty / error states) */}
       {loading ? (
