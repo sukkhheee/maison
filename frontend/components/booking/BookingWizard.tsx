@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, CalendarCheck2, PartyPopper, Sparkles } from "lucide-react";
@@ -50,6 +50,11 @@ export function BookingWizard({ salonSlug }: Props) {
    * `selectedServices` with full ServiceItem objects.
    */
   const [pendingServiceIds, setPendingServiceIds] = useState<string[]>([]);
+  /** Whether the customer arrived via the landing page (services pre-selected).
+   *  When true, we skip step 0 the moment ServiceSelection finishes hydrating. */
+  const arrivedFromLanding = useRef(false);
+  /** One-shot guard so going BACK to step 0 from step 1 doesn't re-skip forward. */
+  const autoSkippedRef = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.sessionStorage.getItem(PENDING_KEY);
@@ -58,6 +63,7 @@ export function BookingWizard({ salonSlug }: Props) {
       const ids = JSON.parse(raw) as string[];
       if (Array.isArray(ids) && ids.length > 0) {
         setPendingServiceIds(ids);
+        arrivedFromLanding.current = true;
       }
     } catch {
       /* ignore malformed value */
@@ -90,6 +96,19 @@ export function BookingWizard({ salonSlug }: Props) {
       email: prev.email || user.email
     }));
   }, [user]);
+
+  // If the customer arrived from the landing page with services already chosen,
+  // skip Step 1 (Service selection) automatically so they don't have to re-pick.
+  // The skip fires once selectedServices has been populated by ServiceSelection's
+  // catalog-hydration onChange, and only once per wizard mount.
+  useEffect(() => {
+    if (autoSkippedRef.current) return;
+    if (!arrivedFromLanding.current) return;
+    if (selectedServices.length === 0) return;
+    if (step !== 0) return;
+    autoSkippedRef.current = true;
+    setStep(1);
+  }, [selectedServices, step]);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
